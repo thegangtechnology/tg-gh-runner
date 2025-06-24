@@ -41,7 +41,11 @@ ENV ImageOS=ubuntu22
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip wget libpq-dev libpq5 \
+    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb &> /dev/null \
+    && apt install -y ./google-chrome-stable_current_amd64.deb \
+    && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq \
+    && chmod +x yq \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
@@ -63,5 +67,13 @@ COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
 
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+
+RUN DEBIAN_FRONTEND=noninteractive sudo apt-get install -y tzdata \
+    && sudo ln -fs /usr/share/zoneinfo/Asia/Bangkok /etc/localtime \
+    && sudo dpkg-reconfigure -f noninteractive tzdata \
+    && echo timestamp: $(date)
+
+RUN mkdir -p /opt/hostedtoolcache \
+    && chown -R runner:runner /opt/hostedtoolcache
 
 USER runner
