@@ -169,6 +169,27 @@ jobs:
         name: runner-packages-linux-arm64
         path: ./
 
+#      # Create ReleaseNote file
+#    - name: Create ReleaseNote
+#      id: releaseNote
+#      uses: actions/github-script@v7.0.1
+#      with:
+#        github-token: ${{secrets.GITHUB_TOKEN}}
+#        script: |
+#          const fs = require('fs');
+#          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+#          var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+#          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
+#          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA>/g, '${{needs.build.outputs.win-arm64-sha}}')
+#          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
+#          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA>/g, '${{needs.build.outputs.osx-arm64-sha}}')
+#          releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
+#          releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
+#          releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
+#          console.log(releaseNote)
+#          core.setOutput('version', runnerVersion);
+#          core.setOutput('note', releaseNote);
+
     # Create ReleaseNote file
     - name: Create ReleaseNote
       id: releaseNote
@@ -185,20 +206,6 @@ jobs:
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
-#        script: |
-#          const fs = require('fs');
-#          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
-#          var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
-##          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
-##          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA>/g, '${{needs.build.outputs.win-arm64-sha}}')
-##          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
-##          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA>/g, '${{needs.build.outputs.osx-arm64-sha}}')
-#          releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
-#          releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
-#          releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
-#          console.log(releaseNote)
-#          core.setOutput('version', runnerVersion);
-#          core.setOutput('note', releaseNote);
 
     - name: Validate Packages HASH
       run: |
