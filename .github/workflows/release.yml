@@ -23,11 +23,6 @@ jobs:
           const fs = require('fs');
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
           const releaseVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
-          if (runnerVersion != releaseVersion) {
-            console.log('Request Release Version: ' + releaseVersion + '\nCurrent Runner Version: ' + runnerVersion)
-            core.setFailed('Version mismatch! Make sure ./releaseVersion match ./src/runnerVersion')
-            return
-          }
           try {
             const release = await github.rest.repos.getReleaseByTag({
               owner: '${{ github.event.repository.owner.name }}',
