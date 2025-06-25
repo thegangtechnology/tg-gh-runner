@@ -41,8 +41,10 @@ ENV ImageOS=ubuntu22
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip wget libpq-dev libpq5
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip wget libpq-dev libpq5 libc6-dev
 
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb &> /dev/null \
+    && dpkg -i google-chrome-stable_current_amd64.deb || apt-get -f install -y
 # Install yq
 RUN curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq \
     && chmod +x yq
