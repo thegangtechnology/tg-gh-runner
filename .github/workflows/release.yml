@@ -2,11 +2,40 @@ name: Runner CD
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * MON'
   push:
     paths:
     - releaseVersion
 
 jobs:
+  get-runner-latest-version:
+    runs-on: ubuntu-latest
+    # runs-on:
+    #   group: ubuntu-x64-docker-dind
+    #   labels: self-hosted
+    outputs:
+      runner_version: ${{ steps.get_version.outputs.runner_version }}
+      image_exists: ${{ steps.check_image.outputs.image_exists }}
+    steps:
+      - name: Get latest runner version
+        id: get_version
+        run: |
+          RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name')
+          echo "Latest runner version: $RUNNER_VERSION"
+          echo "runner_version=$RUNNER_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if the image exists
+        id: check_image
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $(echo ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}| base64)" \
+            -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/manifests/${{ steps.get_version.outputs.runner_version }}")
+
+          IMAGE_EXISTS=$([[ $HTTP_CODE -eq 200 ]] && echo "true" || echo "false")
+          echo "HTTP code: $HTTP_CODE, Image exists: $IMAGE_EXISTS"
+          echo "image_exists=$IMAGE_EXISTS" >> $GITHUB_OUTPUT
   check:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -43,7 +72,8 @@ jobs:
           }
 
   build:
-    needs: check
+    needs: [check, get-runner-latest-version]
+    if: ${{ needs.get-runner-latest-version.outputs.image_exists == 'false' || github.event_name != 'schedule' }}
     outputs:
       linux-x64-sha: ${{ steps.sha.outputs.linux-x64-sha256 }}
       linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
