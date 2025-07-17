@@ -2,8 +2,6 @@ name: Runner CD
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * MON'
   push:
     paths:
     - releaseVersion
@@ -11,7 +9,7 @@ on:
 jobs:
   check:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
 
@@ -50,21 +48,41 @@ jobs:
       linux-x64-sha: ${{ steps.sha.outputs.linux-x64-sha256 }}
       linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
       linux-arm-sha: ${{ steps.sha.outputs.linux-arm-sha256 }}
+      win-x64-sha: ${{ steps.sha.outputs.win-x64-sha256 }}
+      win-arm64-sha: ${{ steps.sha.outputs.win-arm64-sha256 }}
+      osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
+      osx-arm64-sha: ${{ steps.sha.outputs.osx-arm64-sha256 }}
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64, osx-arm64, win-arm64 ]
         include:
         - runtime: linux-x64
-          os: ubuntu-latest
+          os: self-hosted
           devScript: ./dev.sh
 
         - runtime: linux-arm64
-          os: ubuntu-latest
+          os: self-hosted
           devScript: ./dev.sh
 
         - runtime: linux-arm
-          os: ubuntu-latest
+          os: self-hosted
           devScript: ./dev.sh
+
+        - runtime: osx-x64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-arm64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: win-x64
+          os: windows-latest
+          devScript: ./dev
+
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -108,12 +126,32 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
 
     - uses: actions/checkout@v4
 
     # Download runner package tar.gz/zip produced by 'build' job
+    - name: Download Artifact (win-x64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-win-x64
+        path: ./
+    - name: Download Artifact (win-arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-win-arm64
+        path: ./
+    - name: Download Artifact (osx-x64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-osx-x64
+        path: ./
+    - name: Download Artifact (osx-arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-osx-arm64
+        path: ./
     - name: Download Artifact (linux-x64)
       uses: actions/download-artifact@v4
       with:
@@ -140,6 +178,10 @@ jobs:
           const fs = require('fs');
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
           var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
+          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA>/g, '${{needs.build.outputs.win-arm64-sha}}')
+          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
+          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA>/g, '${{needs.build.outputs.osx-arm64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
@@ -150,6 +192,10 @@ jobs:
     - name: Validate Packages HASH
       run: |
         ls -l
+        echo "${{needs.build.outputs.win-x64-sha}}  actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
+        echo "${{needs.build.outputs.win-arm64-sha}}  actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
+        echo "${{needs.build.outputs.osx-x64-sha}}  actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+        echo "${{needs.build.outputs.osx-arm64-sha}}  actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-x64-sha}}  actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-arm-sha}}  actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-arm64-sha}}  actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
@@ -167,6 +213,26 @@ jobs:
           ${{ steps.releaseNote.outputs.note }}
 
     # Upload release assets (full runner packages)
+    - name: Upload Release Asset (win-x64)
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (win-arm64)
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64)
       uses: actions/upload-release-asset@v1.0.2
       env:
@@ -175,6 +241,26 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-x64)
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64)
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm)
@@ -199,7 +285,7 @@ jobs:
 
   publish-image:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
