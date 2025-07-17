@@ -9,7 +9,7 @@ on:
 jobs:
   check:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
@@ -106,7 +106,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
 
     - uses: actions/checkout@v4
@@ -237,7 +237,7 @@ jobs:
 
   publish-image:
     needs: release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
