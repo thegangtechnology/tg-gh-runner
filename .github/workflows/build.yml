@@ -5,7 +5,6 @@ on:
   push:
     branches:
     - main
-    - releases/*
     paths-ignore:
     - '**.md'
   pull_request:
@@ -18,7 +17,8 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm ]
+#        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -32,21 +32,21 @@ jobs:
           os: ubuntu-latest
           devScript: ./dev.sh
 
-        - runtime: osx-x64
-          os: macOS-latest
-          devScript: ./dev.sh
-
-        - runtime: osx-arm64
-          os: macOS-latest
-          devScript: ./dev.sh
-
-        - runtime: win-x64
-          os: windows-latest
-          devScript: ./dev
-
-        - runtime: win-arm64
-          os: windows-latest
-          devScript: ./dev
+#        - runtime: osx-x64
+#          os: macOS-latest
+#          devScript: ./dev.sh
+#
+#        - runtime: osx-arm64
+#          os: macOS-latest
+#          devScript: ./dev.sh
+#
+#        - runtime: win-x64
+#          os: windows-2019
+#          devScript: ./dev
+#
+#        - runtime: win-arm64
+#          os: windows-latest
+#          devScript: ./dev
 
     runs-on: ${{ matrix.os }}
     steps:

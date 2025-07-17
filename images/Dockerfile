@@ -5,15 +5,15 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.7.0
-ARG DOCKER_VERSION=28.3.0
-ARG BUILDX_VERSION=0.25.0
+ARG DOCKER_VERSION=28.2.1
+ARG BUILDX_VERSION=0.24.0
 
 RUN apt update -y && apt install curl unzip -y
 
 WORKDIR /actions-runner
 RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export RUNNER_ARCH=x64 ; fi \
-    && curl -f -L -o runner.tar.gz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGETOS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
+    && curl -f -L -o runner.tar.gz https://github.com/thegangtechnology/tg-gh-runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGETOS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
     && tar xzf ./runner.tar.gz \
     && rm runner.tar.gz
 
@@ -39,16 +39,32 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
+##### START #####
+# ADD any require tools or package here
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
-    && rm -rf /var/lib/apt/lists/*
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
+    curl jq unzip wget libpq-dev libpq5 libc6-dev build-essential ruby-dev curl wget libjemalloc2 \
+    libvips dh-autoreconf libyaml-dev fonts-thai-tlwg libffi-dev git node-gyp pkg-config npm
+
+# node
+RUN apt remove -y nodejs libnode-dev
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - \
+    && apt install nodejs -y \
+    && npm install --global yarn
+
+# chrome stable
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb &> /dev/null \
+    && dpkg -i google-chrome-stable_current_amd64.deb || apt-get -f install -y
+# Install yq
+RUN curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq \
+    && chmod +x yq
+##### END #####
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
-    && apt install -y git \
-    && rm -rf /var/lib/apt/lists/*
+    && apt install -y git
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
@@ -63,5 +79,8 @@ COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
 
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+
+RUN mkdir -p /opt/hostedtoolcache \
+    && chown -R runner:runner /opt/hostedtoolcache
 
 USER runner
